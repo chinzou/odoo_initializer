@@ -1,9 +1,6 @@
 import logging
 
-# from odoo.addons.base_import.models.base_import import Import
-from odoo.http import Controller, request
-from odoo.api import Environment
-
+import csv
 
 from utils import config_loader
 
@@ -11,46 +8,70 @@ _logger = logging.getLogger(__name__)
 
 
 class BaseModelImporter:
-
     model_name = None
-    # _inherit = model_name
 
-    allowed_file_extensions = [".csv"]
+    config_source = "odoo"  # ["openmrs, "odoo"]
+    update_existing_record = False
+    identifier = None
+    allowed_file_extensions = [".csv"]  # supported file extensions
     mapping = None
     folder = None
+    filter_ = {}
 
     def load_files(self, relevant_folder):
         return config_loader.get_files(
-            relevant_folder, allowed_extensions=self.allowed_file_extensions
+            self.config_source,
+            relevant_folder,
+            allowed_extensions=self.allowed_file_extensions,
         )
 
     def load_file(self, file):
-        _logger.info(self.model_name)
 
-        # _logger.info(my_model)
-        # _logger.info(my_model.check_access_rights())
-        # result = Model.sudo(Model).create(self.model_name,{"name": "testme"})
+        model = config_loader.odoo_.env[self.model_name]
 
-        my_ =
+        for record in file:
+            found_ids = model.search([(self.identifier, "=", record[self.identifier])])
+            if found_ids and not self.update:
+                _logger.info("Skipping record with IDs:", found_ids)
+                continue
 
+            if found_ids:
+                # TODO: what if there are two IDs found for the same record
+                _logger.info("Updating existing records for IDs:", found_ids)
+                model.write([found_ids[0]], record)
+            else:
+                model.create(record)
 
-        _logger.info("this is env: ")
-        _logger.info(my_)
+        return file
 
-        # Model.create(self.model_name,{"name": "testme"})
-        return file.title()
-        # import_wizard = self.env["base_import.import"].create(
-        #     {"res_model": self.model_name, "file": file, "file_type": "text/csv"}
-        # )
-        # _logger.info(import_wizard)
-        # result = import_wizard.parse_preview(
-        #     {"quoting": '"', "separator": ",", "headers": True}
-        # )
-        # _logger.info(result)
-        # return result
+    def _mapper(self, file_, mapping={}, filters_={}):
+        if not isinstance(filters_, dict):
+            filters_ = {}
+        mapped_csv = []
+
+        for dict_line in file_:
+            row = {}
+            for key, value in mapping.items():
+                if value in dict_line.keys():
+                    row[key] = dict_line.pop(value)
+
+            if not filters_:
+                mapped_csv.append(row)
+
+            for filter_key, filter_value in filters_.items():
+                if filter_key in row.keys():
+                    filter_value = (
+                        [filter_value]
+                        if not isinstance(filter_value, list)
+                        else filter_value
+                    )
+                    if row[filter_key] in filter_value:
+                        mapped_csv.append(row)
+        return mapped_csv
 
     def load_(self):
         _logger.info("file loading")
         for file_ in self.load_files(self.folder):
-            _logger.info("file loaded")
-            result = self.load_file(file_)
+            mapped_file = self._mapper(file_, self.mapping, self.filter_)
+
+            self.load_file(mapped_file)

@@ -9,8 +9,10 @@ _logger = logging.getLogger(__name__)
 
 
 class DrugLoader(BaseModelImporter):
-
+    update = True
+    config_source = "openmrs"
     model_name = "product.template"
-    mapping = {"Fully specified name:en": "name", "Data class": "type"}
+    mapping = {"name": "Fully specified name:en", "lst_price": "odoo_price"}
     folder = "concepts"
-
+    filter_ = {}
+    identifier = "name"

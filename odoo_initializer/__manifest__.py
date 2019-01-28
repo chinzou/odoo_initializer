@@ -10,8 +10,9 @@
     "category": "Uncategorized",
     "version": "0.1",
     "depends": ["base", "base_import"],
+    "external_dependencies": {"python" : ["odoorpc"]},
     "application": True,
     "installable": True,
-    "auto_install": True,
+    "auto_install": True
 }
 
