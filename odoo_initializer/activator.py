@@ -1,7 +1,6 @@
 import logging
 
-from .utils import config_loader
-from .models.drug_loader import DrugLoader
+from models.drug_loader import DrugLoader
 
 
 _logger = logging.getLogger(__name__)
